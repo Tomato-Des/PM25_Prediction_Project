@@ -1,0 +1,29 @@
+pm25_dashboard/
+├── backend/
+│   ├── __init__.py
+│   ├── app.py                 # Flask main application
+│   ├── config.py              # Configuration & env variables
+│   ├── database.py            # SQLite database utilities
+│   ├── init_db.py             # Initialize DB from CSV
+│   ├── crawler.py             # EPA API data crawler
+│   ├── prediction_service.py  # Model inference service
+│   ├── rag_service.py         # Gemini RAG chatbot
+│   └── scheduler.py           # APScheduler for hourly tasks
+├── frontend/
+│   ├── index.html             # Main dashboard UI
+│   ├── static/
+│   │   ├── css/
+│   │   │   └── style.css      # Modern styling
+│   │   └── js/
+│   │       ├── dashboard.js   # Chart.js visualizations
+│   │       └── chat.js        # Chatbot interface
+├── data/
+│   └── .gitkeep               # Volume will be mounted here
+├── models/
+│   └── .gitkeep               # Place best_model.keras here
+├── Dockerfile
+├── railway.toml
+├── requirements.txt
+├── .env.example
+├── .gitignore
+└── README.md

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PM2.5 Air Quality Dashboard - 土城</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🌤️ PM2.5 Air Quality Monitor</h1>
+                <p class="subtitle">土城 Real-time Predictions & Analysis</p>
+            </div>
+            <div class="header-stats">
+                <div class="stat-badge">
+                    <span class="stat-label">Last Updated</span>
+                    <span class="stat-value" id="lastUpdate">Loading...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Current Status Cards -->
+        <section class="status-cards">
+            <div class="card card-primary">
+                <div class="card-icon">📊</div>
+                <div class="card-content">
+                    <h3>Current PM2.5</h3>
+                    <div class="metric-value" id="currentPM25">--</div>
+                    <div class="metric-unit">μg/m³</div>
+                    <div class="status-badge" id="currentStatus">--</div>
+                </div>
+            </div>
+
+            <div class="card card-accent">
+                <div class="card-icon">🔮</div>
+                <div class="card-content">
+                    <h3>Next Hour</h3>
+                    <div class="metric-value" id="nextHourPM25">--</div>
+                    <div class="metric-unit">μg/m³</div>
+                    <div class="trend-indicator" id="trendIndicator">--</div>
+                </div>
+            </div>
+
+            <div class="card card-info">
+                <div class="card-icon">📈</div>
+                <div class="card-content">
+                    <h3>24h Average</h3>
+                    <div class="metric-value" id="avgPM25">--</div>
+                    <div class="metric-unit">μg/m³</div>
+                    <div class="metric-note">Forecast Average</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Health Advice -->
+        <section class="card advice-card">
+            <h3>🤖 AI Health Advice</h3>
+            <div class="advice-content" id="healthAdvice">
+                <p class="loading">Analyzing current air quality...</p>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section class="charts-section">
+            <div class="card chart-card">
+                <h3>📈 24-Hour Forecast</h3>
+                <canvas id="forecastChart"></canvas>
+            </div>
+
+            <div class="card chart-card">
+                <h3>📊 7-Day Historical Trend</h3>
+                <canvas id="historyChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Chatbot Section -->
+        <section class="card chatbot-card">
+            <h3>💬 Ask About Air Quality</h3>
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message bot">
+                        <div class="message-content">
+                            👋 Hi! Ask me about PM2.5 trends, averages, or historical data. 
+                            Try: "What was the average PM2.5 last week?"
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-container">
+                    <input 
+                        type="text" 
+                        id="chatInput" 
+                        class="chat-input" 
+                        placeholder="Ask about air quality..." 
+                        onkeypress="if(event.key==='Enter') sendMessage()"
+                    >
+                    <button class="chat-send-btn" onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Data Source: Taiwan Ministry of Environment (EPA) | Model: Transformer Neural Network</p>
+            <p>Auto-updates hourly | Last model run: <span id="modelRunTime">--</span></p>
+        </footer>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+    <script src="/static/js/chat.js"></script>
+</body>
+</html>
