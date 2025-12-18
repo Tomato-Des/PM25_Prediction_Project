@@ -6,7 +6,16 @@ from backend.config import Config
 from backend.database import Database
 from backend.scheduler import HourlyScheduler
 from backend.rag_service import RAGChatbot
+import shutil
 
+# Check if volume database exists and is populated
+if not os.path.exists('/data/pm25_data.db') or os.path.getsize('/data/pm25_data.db') < 1000:
+    print("📦 Initializing database from backup...")
+    # Copy from a different location in the image
+    shutil.copy('/app/data/pm25_data.db', '/data/pm25_data.db')
+    print("✅ Database initialized!")
+
+    
 # Initialize Flask app
 app = Flask(__name__, 
             template_folder='../frontend',
