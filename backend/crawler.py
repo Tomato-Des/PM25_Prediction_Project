@@ -138,6 +138,9 @@ class EPACrawler:
             ]
             self.db.insert_measurements_bulk(bulk_data)
             print(f"✅ Crawled and Stored {len(bulk_data)} measurements")
+            print(f"[INFO] Current total measurements in DB: {self.db.get_measurement_count()}")
+            print(f"[INFO] Latest measurement datetime: {self.db.get_latest_datetime()}")
+            print(f"[INFO] Current Predictions count: {len(self.db.get_latest_predictions())}")
         
         # No cleanup - preserve all historical data
         
