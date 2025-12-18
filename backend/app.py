@@ -14,8 +14,10 @@ if not os.path.exists('/data/pm25_data.db') or os.path.getsize('/data/pm25_data.
     # Copy from a different location in the image
     shutil.copy('/app/data/pm25_data.db', '/data/pm25_data.db')
     print("✅ Database initialized!")
+else:
+    print("✅ Database found in /data/pm25_data.db with size:", os.path.getsize('/data/pm25_data.db'))
 
-    
+
 # Initialize Flask app
 app = Flask(__name__, 
             template_folder='../frontend',
