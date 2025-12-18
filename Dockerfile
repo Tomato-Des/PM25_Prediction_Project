@@ -20,10 +20,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 COPY models/ ./models/
-COPY data/pm25_data.db /data/pm25_data.db
 
-# Create data directory for volume mount
+# Create data directory for volume mount FIRST
 RUN mkdir -p /data
+
+# Then copy database into it
+COPY data/pm25_data.db /data/pm25_data.db
 
 # Expose port
 EXPOSE 5000
