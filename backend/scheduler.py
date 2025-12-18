@@ -45,8 +45,7 @@ class HourlyScheduler:
     
     def start(self):
         """Start the hourly scheduler"""
-        # Schedule to run at the top of every hour (0 minutes)
-        # Example: 00:00, 01:00, 02:00, etc.
+        # 1. Schedule the regular hourly task (minute 0)
         self.scheduler.add_job(
             self.hourly_task,
             trigger=CronTrigger(minute=0, timezone=self.timezone),
@@ -55,14 +54,34 @@ class HourlyScheduler:
             replace_existing=True
         )
         
+        # 2. INTELLIGENT STARTUP CHECK:
+        # If latest data is stale (>1 hour old) or no predictions exist, run immediately.
+        latest_str = self.db.get_latest_datetime()
+        should_run_now = False
+        
+        if not latest_str:
+            should_run_now = True
+        else:
+            # Check if stale
+            last_time = datetime.strptime(latest_str, '%Y-%m-%d %H:%M')
+            # Localize to match timezone awareness
+            last_time = self.timezone.localize(last_time) if last_time.tzinfo is None else last_time
+            now = datetime.now(self.timezone)
+            
+            if (now - last_time).total_seconds() > 3600:
+                should_run_now = True
+                print(f"[INFO] Data is stale (Last: {latest_str}). Triggering immediate update...")
+
         self.scheduler.start()
+        
+        # Add the one-off job AFTER starting the scheduler so it runs in the background
+        if should_run_now:
+            self.scheduler.add_job(self.hourly_task, id='startup_update')
+
         print("\n" + "="*60)
         print("⏰ SCHEDULER STARTED")
         print("="*60)
-        print(f"✅ Hourly task scheduled (runs at minute 0 of every hour)")
-        print(f"   Timezone: {Config.TIMEZONE}")
-        print(f"   Next run: {self.scheduler.get_jobs()[0].next_run_time}")
-        print("="*60 + "\n")
+        
     
     def run_now(self):
         """Run the hourly task immediately (for testing/initialization)"""

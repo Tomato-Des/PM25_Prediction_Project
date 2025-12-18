@@ -1,68 +1,101 @@
-// Dashboard JavaScript - Chart.js Visualizations
-
 let forecastChart = null;
 let historyChart = null;
 
-// Initialize dashboard
 document.addEventListener('DOMContentLoaded', () => {
+    // Initial Load
     loadDashboardData();
-    // Auto-refresh every 5 minutes
-    setInterval(loadDashboardData, 300000);
+    // Refresh every 30 seconds to catch the background update quickly
+    setInterval(loadDashboardData, 30000); 
 });
 
 async function loadDashboardData() {
+    await Promise.all([
+        loadCurrentAndStatus(),
+        loadPredictions(),
+        loadHistory()
+    ]);
+}
+
+async function loadCurrentAndStatus() {
     try {
-        await Promise.all([
-            loadCurrentData(),
-            loadPredictions(),
-            loadHistory(),
-            loadHealthAdvice()
-        ]);
+        const response = await fetch('/api/current');
+        if (!response.ok) return; // Silent fail on network error
+        
+        const data = await response.json();
+        const updateElem = document.getElementById('lastUpdate');
+        const dotElem = document.querySelector('.dot');
+
+        // Handle System Startup State (Empty DB or No recent data)
+        if (data.error || data.current_pm25 === undefined) {
+            document.getElementById('currentPM25').innerText = "--";
+            document.getElementById('currentStatus').innerText = "System Starting...";
+            document.getElementById('currentStatus').className = "status-pill loading";
+            document.getElementById('healthAdvice').innerText = "The system is gathering initial data. Please wait...";
+            updateElem.innerText = "Initializing...";
+            dotElem.style.background = "#fbbf24"; // Yellow for waiting
+            return;
+        }
+
+        // Data is ready
+        const pm25 = data.current_pm25;
+        
+        // 1. Update Main Value
+        document.getElementById('currentPM25').innerText = pm25.toFixed(1);
+        updateElem.innerText = "Updated " + new Date(data.datetime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'});
+        dotElem.style.background = "#10b981"; // Green for active
+
+        // 2. Client-Side Status Logic (Replaces API call)
+        updateHealthStatus(pm25);
+
+        // 3. Update Next Hour
+        if (data.next_hour_prediction !== null) {
+            const nextVal = data.next_hour_prediction;
+            document.getElementById('nextHourPM25').innerText = nextVal.toFixed(1);
+            
+            // Trend
+            const trend = nextVal - pm25;
+            const trendElem = document.getElementById('trendIndicator');
+            const icon = trend > 0 ? '↗' : '↘';
+            const color = trend > 0 ? '#ef4444' : '#10b981';
+            
+            trendElem.innerHTML = `<span style="color:${color}">${icon} ${Math.abs(trend).toFixed(1)}</span> from current`;
+        }
+
     } catch (error) {
-        console.error('Error loading dashboard:', error);
+        console.error("Sync error:", error);
     }
 }
 
-async function loadCurrentData() {
-    try {
-        const response = await fetch('/api/current');
-        const data = await response.json();
-        
-        if (data.error) {
-            console.error('API Error:', data.error);
-            return;
-        }
-        
-        // Update current PM2.5
-        document.getElementById('currentPM25').textContent = data.current_pm25.toFixed(1);
-        
-        // Update status badge
-        const statusBadge = document.getElementById('currentStatus');
-        statusBadge.textContent = data.status;
-        statusBadge.className = 'status-badge ' + data.status.toLowerCase().replace(/ /g, '-');
-        
-        // Update next hour prediction
-        if (data.next_hour_prediction) {
-            document.getElementById('nextHourPM25').textContent = data.next_hour_prediction.toFixed(1);
-            
-            // Trend indicator
-            const trend = data.next_hour_prediction - data.current_pm25;
-            const trendElem = document.getElementById('trendIndicator');
-            if (trend > 0) {
-                trendElem.textContent = `↗ +${trend.toFixed(1)}`;
-                trendElem.style.color = '#ef4444';
-            } else {
-                trendElem.textContent = `↘ ${trend.toFixed(1)}`;
-                trendElem.style.color = '#10b981';
-            }
-        }
-        
-        // Update last update time
-        document.getElementById('lastUpdate').textContent = new Date(data.datetime).toLocaleString('zh-TW');
-        
-    } catch (error) {
-        console.error('Error loading current data:', error);
+function updateHealthStatus(pm25) {
+    const statusBadge = document.getElementById('currentStatus');
+    const adviceBox = document.getElementById('healthAdvice');
+    
+    let status = '';
+    let colorClass = '';
+    let advice = '';
+
+    // EPA Standards
+    if (pm25 <= 15.4) {
+        status = 'Good';
+        colorClass = 'good';
+        advice = 'Air quality is great! Perfect for outdoor activities and exercise.';
+    } else if (pm25 <= 35.4) {
+        status = 'Moderate';
+        colorClass = 'moderate';
+        advice = 'Air quality is acceptable. Extremely sensitive individuals should consider limiting prolonged outdoor exertion.';
+    } else if (pm25 <= 54.4) {
+        status = 'Unhealthy for Sensitive';
+        colorClass = 'unhealthy-sensitive';
+        advice = 'Members of sensitive groups (children, elderly, asthmatics) should limit outdoor activities.';
+    } else {
+        status = 'Unhealthy';
+        colorClass = 'unhealthy';
+        advice = 'Everyone may begin to experience health effects. Please wear a mask and avoid outdoor activities.';
     }
+
+    statusBadge.innerText = status;
+    statusBadge.className = `status-pill ${colorClass}`;
+    adviceBox.innerText = advice;
 }
 
 async function loadPredictions() {
@@ -70,201 +103,144 @@ async function loadPredictions() {
         const response = await fetch('/api/predictions');
         const data = await response.json();
         
-        if (data.error || !data.predictions || data.predictions.length === 0) {
-            return;
-        }
-        
+        if (!data.predictions || data.predictions.length === 0) return;
+
         // Calculate 24h average
         const avg = data.predictions.reduce((sum, p) => sum + p.predicted_pm25, 0) / data.predictions.length;
-        document.getElementById('avgPM25').textContent = avg.toFixed(1);
+        document.getElementById('avgPM25').innerText = avg.toFixed(1);
         
-        // Update forecast chart
-        updateForecastChart(data.predictions);
-        
-    } catch (error) {
-        console.error('Error loading predictions:', error);
-    }
+        renderForecastChart(data.predictions);
+    } catch (e) { console.error(e); }
 }
 
 async function loadHistory() {
     try {
-        const response = await fetch('/api/history?hours=168'); // 7 days
+        // Change this to 168 to fetch the full 7 days
+        const response = await fetch('/api/history?hours=168'); 
         const data = await response.json();
-        
-        if (data.error || !data.history) {
-            return;
-        }
-        
-        updateHistoryChart(data.history);
-        
-    } catch (error) {
-        console.error('Error loading history:', error);
-    }
+        if (data.history) renderHistoryChart(data.history);
+    } catch (e) { console.error(e); }
 }
 
-async function loadHealthAdvice() {
-    try {
-        const response = await fetch('/api/status');
-        const data = await response.json();
-        
-        if (data.status) {
-            document.getElementById('healthAdvice').innerHTML = `<p>${data.status}</p>`;
-        }
-        
-    } catch (error) {
-        console.error('Error loading health advice:', error);
-    }
-}
-
-function updateForecastChart(predictions) {
-    const ctx = document.getElementById('forecastChart').getContext('2d');
+// Chart Configurations
+function renderForecastChart(predictions) {
+    const ctx = document.getElementById('forecastChart');
+    if (!ctx) return;
     
     const labels = predictions.map(p => {
-        const date = new Date(p.target_datetime);
-        return date.getHours() + ':00';
+        const d = new Date(p.target_datetime);
+        return `${d.getHours()}:00`;
     });
-    
     const values = predictions.map(p => p.predicted_pm25);
-    
-    if (forecastChart) {
-        forecastChart.destroy();
-    }
-    
+
+    if (forecastChart) forecastChart.destroy();
+
     forecastChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Predicted PM2.5 (μg/m³)',
+                label: 'Forecast (μg/m³)',
                 data: values,
-                borderColor: '#6366f1',
-                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                borderColor: '#4f46e5',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
                 borderWidth: 3,
-                fill: true,
                 tension: 0.4,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                pointBackgroundColor: '#6366f1'
+                fill: true,
+                pointRadius: 0,
+                pointHoverRadius: 6
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    labels: {
-                        font: { size: 14, weight: '600' },
-                        color: '#1f2937'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: { size: 14 },
-                    bodyFont: { size: 13 }
-                }
-            },
+            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        font: { size: 12 },
-                        color: '#6b7280'
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    }
-                },
-                x: {
-                    ticks: {
-                        font: { size: 12 },
-                        color: '#6b7280',
-                        maxRotation: 45
-                    },
-                    grid: {
-                        display: false
-                    }
-                }
-            }
+                x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
+                y: { beginAtZero: true, border: { display: false } }
+            },
+            interaction: { mode: 'nearest', axis: 'x', intersect: false }
         }
     });
 }
 
-function updateHistoryChart(history) {
-    const ctx = document.getElementById('historyChart').getContext('2d');
-    
-    // Sample data every 3 hours for cleaner display
-    const sampled = history.filter((_, i) => i % 3 === 0);
-    
+function renderHistoryChart(history) {
+    const ctx = document.getElementById('historyChart');
+    if (!ctx) return;
+
+    // Decimate data (take every 2nd point) to improve performance but keep enough detail
+    const sampled = history.filter((_, i) => i % 2 === 0);
     const labels = sampled.map(h => {
-        const date = new Date(h.datetime);
-        return `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:00`;
+        const d = new Date(h.datetime);
+        // Format: "12/07 14:00"
+        return `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:00`;
     });
-    
     const values = sampled.map(h => h.pm25);
-    
-    if (historyChart) {
-        historyChart.destroy();
-    }
-    
+
+    if (historyChart) historyChart.destroy();
+
     historyChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Historical PM2.5 (μg/m³)',
+                label: 'Historical PM2.5',
                 data: values,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderColor: '#64748b',
+                backgroundColor: 'rgba(100, 116, 139, 0.1)', // Added fill for better visibility
                 borderWidth: 2,
+                tension: 0.1,
                 fill: true,
-                tension: 0.3,
-                pointRadius: 2,
-                pointHoverRadius: 5,
-                pointBackgroundColor: '#10b981'
+                pointRadius: 0,
+                pointHoverRadius: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    labels: {
-                        font: { size: 14, weight: '600' },
-                        color: '#1f2937'
-                    }
-                },
+            plugins: { 
+                legend: { display: false },
                 tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: { size: 14 },
-                    bodyFont: { size: 13 }
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return ` ${context.parsed.y} μg/m³`;
+                        }
+                    }
                 }
             },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        font: { size: 12 },
-                        color: '#6b7280'
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                x: { 
+                    display: true, // ENABLED X-AXIS
+                    grid: { display: false },
+                    ticks: { 
+                        maxTicksLimit: 8, // Limit ticks so they don't overlap
+                        maxRotation: 0,
+                        font: { size: 11 }
                     }
                 },
-                x: {
-                    ticks: {
-                        font: { size: 10 },
-                        color: '#6b7280',
-                        maxRotation: 45,
-                        maxTicksLimit: 20
+                y: { 
+                    display: true, // ENABLED Y-AXIS
+                    beginAtZero: true,
+                    grid: { 
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
                     },
-                    grid: {
-                        display: false
+                    ticks: {
+                        font: { size: 11 }
+                    },
+                    title: {
+                        display: true,
+                        text: 'μg/m³',
+                        font: { size: 10 }
                     }
                 }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
             }
         }
     });

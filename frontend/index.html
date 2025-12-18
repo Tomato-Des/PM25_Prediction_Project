@@ -1,111 +1,118 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PM2.5 Air Quality Dashboard - 土城</title>
+    <title>Air Quality Monitor | 土城</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div class="background-orb orb-1"></div>
+    <div class="background-orb orb-2"></div>
+
     <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <h1>🌤️ PM2.5 Air Quality Monitor</h1>
-                <p class="subtitle">土城 Real-time Predictions & Analysis</p>
-            </div>
-            <div class="header-stats">
-                <div class="stat-badge">
-                    <span class="stat-label">Last Updated</span>
-                    <span class="stat-value" id="lastUpdate">Loading...</span>
+        <nav class="navbar">
+            <div class="brand">
+                <div class="brand-icon">🌤️</div>
+                <div>
+                    <h1>AirQuality<span class="highlight">AI</span></h1>
+                    <p class="subtitle">土城 Real-time Forecast</p>
                 </div>
             </div>
-        </header>
-
-        <!-- Current Status Cards -->
-        <section class="status-cards">
-            <div class="card card-primary">
-                <div class="card-icon">📊</div>
-                <div class="card-content">
-                    <h3>Current PM2.5</h3>
-                    <div class="metric-value" id="currentPM25">--</div>
-                    <div class="metric-unit">μg/m³</div>
-                    <div class="status-badge" id="currentStatus">--</div>
-                </div>
+            <div class="last-update">
+                <span class="dot"></span>
+                <span id="lastUpdate">Connecting...</span>
             </div>
+        </nav>
 
-            <div class="card card-accent">
-                <div class="card-icon">🔮</div>
-                <div class="card-content">
-                    <h3>Next Hour</h3>
-                    <div class="metric-value" id="nextHourPM25">--</div>
-                    <div class="metric-unit">μg/m³</div>
-                    <div class="trend-indicator" id="trendIndicator">--</div>
-                </div>
-            </div>
-
-            <div class="card card-info">
-                <div class="card-icon">📈</div>
-                <div class="card-content">
-                    <h3>24h Average</h3>
-                    <div class="metric-value" id="avgPM25">--</div>
-                    <div class="metric-unit">μg/m³</div>
-                    <div class="metric-note">Forecast Average</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- AI Health Advice -->
-        <section class="card advice-card">
-            <h3>🤖 AI Health Advice</h3>
-            <div class="advice-content" id="healthAdvice">
-                <p class="loading">Analyzing current air quality...</p>
-            </div>
-        </section>
-
-        <!-- Charts Section -->
-        <section class="charts-section">
-            <div class="card chart-card">
-                <h3>📈 24-Hour Forecast</h3>
-                <canvas id="forecastChart"></canvas>
-            </div>
-
-            <div class="card chart-card">
-                <h3>📊 7-Day Historical Trend</h3>
-                <canvas id="historyChart"></canvas>
-            </div>
-        </section>
-
-        <!-- Chatbot Section -->
-        <section class="card chatbot-card">
-            <h3>💬 Ask About Air Quality</h3>
-            <div class="chat-container">
-                <div class="chat-messages" id="chatMessages">
-                    <div class="chat-message bot">
-                        <div class="message-content">
-                            👋 Hi! Ask me about PM2.5 trends, averages, or historical data. 
-                            Try: "What was the average PM2.5 last week?"
+        <main class="dashboard-grid">
+            
+            <div class="card hero-card">
+                <div class="hero-content">
+                    <div class="metric-group">
+                        <span class="label">Current PM2.5</span>
+                        <div class="value-large">
+                            <span id="currentPM25">--</span>
+                            <span class="unit">μg/m³</span>
                         </div>
                     </div>
+                    <div class="status-group">
+                        <div id="currentStatus" class="status-pill loading">Analyzing...</div>
+                        <p id="healthAdvice" class="health-text">Waiting for latest measurements...</p>
+                    </div>
                 </div>
-                <div class="chat-input-container">
-                    <input 
-                        type="text" 
-                        id="chatInput" 
-                        class="chat-input" 
-                        placeholder="Ask about air quality..." 
-                        onkeypress="if(event.key==='Enter') sendMessage()"
-                    >
-                    <button class="chat-send-btn" onclick="sendMessage()">Send</button>
+                <div class="ring-container">
+                    <svg class="progress-ring" width="120" height="120">
+                        <circle class="progress-ring__circle" stroke="white" stroke-width="8" fill="transparent" r="52" cx="60" cy="60"/>
+                    </svg>
                 </div>
             </div>
-        </section>
 
-        <!-- Footer -->
-        <footer class="footer">
-            <p>Data Source: Taiwan Ministry of Environment (EPA) | Model: Transformer Neural Network</p>
-            <p>Auto-updates hourly | Last model run: <span id="modelRunTime">--</span></p>
+            <div class="stats-column">
+                <div class="card stat-card">
+                    <div class="card-header">
+                        <span class="icon">🔮</span>
+                        <h3>Next Hour Forecast</h3>
+                    </div>
+                    <div class="stat-body">
+                        <div class="stat-value" id="nextHourPM25">--</div>
+                        <div class="stat-sub" id="trendIndicator">--</div>
+                    </div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="card-header">
+                        <span class="icon">📊</span>
+                        <h3>24h Avg Forecast</h3>
+                    </div>
+                    <div class="stat-body">
+                        <div class="stat-value" id="avgPM25">--</div>
+                        <div class="stat-sub">Based on Transformer Model</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card chart-card full-width">
+                <div class="card-header">
+                    <h3>24-Hour Prediction Trend</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card chart-card half-width">
+                <div class="card-header">
+                    <h3>7-Day History</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="historyChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card chat-card half-width">
+                <div class="card-header">
+                    <h3>💬 AI Assistant</h3>
+                </div>
+                <div class="chat-interface">
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="message bot">
+                            <div class="bubble">Hello! How can I help you today?</div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Type your message here...">
+                        <button onclick="sendMessage()">➤</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Data: Taiwan Ministry of Environment | Model: Transformer v1.0</p>
         </footer>
     </div>
 

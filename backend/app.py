@@ -152,21 +152,6 @@ def api_chat():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/status')
-def api_status():
-    """
-    Get current air quality status with AI-generated advice.
-    
-    Returns:
-        {"status": "Current PM2.5 is..."}
-    """
-    try:
-        status = chatbot.get_current_status()
-        return jsonify({'status': status})
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/stats')
 def api_stats():
     """

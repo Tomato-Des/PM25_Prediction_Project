@@ -16,8 +16,6 @@ eggs/
 Claude_Prob.txt
 lib/
 lib64/
-models/
-*.keras
 parts/
 sdist/
 var/
@@ -31,7 +29,6 @@ wheels/
 .env.local
 
 # Database
-*.db
 *.sqlite
 *.sqlite3
 
@@ -53,5 +50,3 @@ Thumbs.db
 # models/*.keras
 
 # Data
-data/*.db
-data/*.csv

@@ -92,7 +92,7 @@ class RAGChatbot:
         
         # Initialize model with tools
         self.model = genai.GenerativeModel(
-            model_name='gemini-pro',
+            model_name='gemini-2.5-flash',
             tools=self.tools
         )
     
@@ -138,9 +138,9 @@ When users ask about air quality:
             response = chat.send_message(full_prompt)
             
             # Handle function calls
-            max_iterations = 5  # Prevent infinite loops
+            max_iterations = 5
             iteration = 0
-            
+
             while iteration < max_iterations:
                 iteration += 1
                 
@@ -152,20 +152,31 @@ When users ask about air quality:
                     break
                 
                 # Check for function calls
-                function_calls = [part for part in parts if hasattr(part, 'function_call')]
+                function_calls = [part for part in parts if hasattr(part, 'function_call') and part.function_call]
                 
                 if not function_calls:
-                    # No function calls, return text
+                    # No function calls, check for text response
                     text_parts = [part.text for part in parts if hasattr(part, 'text')]
                     if text_parts:
                         return ''.join(text_parts)
                     break
                 
-                # Process function calls
+                # Process ALL function calls before sending back
+                function_responses = []
                 for part in function_calls:
                     function_call = part.function_call
                     function_name = function_call.name
-                    function_args = dict(function_call.args)
+                    
+                    # Skip if function name is empty
+                    if not function_name:
+                        print(f"[WARN] Skipping function call with empty name")
+                        continue
+                    
+                    # Check if args exists
+                    if function_call.args is not None:
+                        function_args = dict(function_call.args)
+                    else:
+                        function_args = {}
                     
                     print(f"[DEBUG] Gemini called: {function_name}({function_args})")
                     
@@ -173,18 +184,22 @@ When users ask about air quality:
                     result = self.execute_function(function_name, function_args)
                     print(f"[DEBUG] Function result: {result}")
                     
-                    # Send result back to model
-                    response = chat.send_message(
-                        {
-                            "parts": [{
-                                "function_response": {
-                                    "name": function_name,
-                                    "response": {"result": result}
-                                }
-                            }]
+                    # Collect function response
+                    function_responses.append({
+                        "function_response": {
+                            "name": function_name,
+                            "response": {"result": result}
                         }
-                    )
-            
+                    })
+                
+                # If no valid function calls were processed, break
+                if not function_responses:
+                    print("[WARN] No valid function calls to process")
+                    break
+                
+                # Send ALL function responses back at once
+                response = chat.send_message({"parts": function_responses})
+
             return "I couldn't generate a response. Please try rephrasing your question."
         
         except Exception as e:
@@ -211,7 +226,7 @@ When users ask about air quality:
                 query += f" The predicted PM2.5 for the next hour is {next_hour} μg/m³."
             query += " Provide brief health advice (2 sentences max)."
             
-            model_simple = genai.GenerativeModel('gemini-pro')
+            model_simple = genai.GenerativeModel('gemini-2.5-flash')
             response = model_simple.generate_content(query)
             return response.text
         
